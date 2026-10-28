@@ -16,10 +16,19 @@ sequencer -> FM voice -> ring buffer -> grain cloud -> SPACE -> out
 | Parameter definitions (254 parameters, 38 sub-pages) | done: `params/params.py` |
 | Engine: sequencer, FM voice, grains, effects, mod matrix, A/B morph, patches | done: `core/`, tested on the computer |
 | Browser build and control page | done: `web/` |
-| FM-1 build (hardware layer, screen UI, 12 patch slots in flash) | not started |
+| FM-1 firmware on fm1-base (screen UI, 12 patch slots, web installer) | done: `app.c`, built by CI |
 | Control page talking to the FM-1 over USB | not started (protocol drafted in `docs/PROTOCOL.md`) |
 
-## Try it in the browser
+## Install on the FM-1
+
+Open the web installer in Chrome or Edge, connect the FM-1 by USB and press Install:
+**https://jose-no.github.io/Fm1-txtr/install/**. The same site has the [manual](https://jose-no.github.io/Fm1-txtr/manual/)
+and the FM-1 app [running in the browser](https://jose-no.github.io/Fm1-txtr/emu/). Going back to M-VAVE's firmware
+is on the installer page too; see `docs/INSTALL.md`.
+
+The site is published from the `site` branch by the Firmware workflow (Settings > Pages > Deploy from a branch: `site`).
+
+## Try the control page in the browser
 
 The browser build is already in the repo (`web/txtr.wasm`), so nothing needs compiling:
 

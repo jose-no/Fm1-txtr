@@ -14,10 +14,8 @@ firmware. Nothing needs opening. Installing is at your own risk; the steps to go
 
 ## Install
 
-1. Open the installer page: `install/` on the fm1-txtr site (GitHub Pages from the `site` branch), or the `site`
-   branch / the `fm1-txtr-installer-site` artifact of the latest
-   [Firmware run](https://github.com/Jose-no/fm1-txtr/actions/workflows/firmware.yml) served locally:
-   unzip it, run `python3 -m http.server 8000` inside it, open http://localhost:8000/install/.
+1. Open the web installer in Chrome or Edge: **https://jose-no.github.io/Fm1-txtr/install/**
+   (GitHub Pages, published from the `site` branch by every build).
 2. Connect the FM-1 by USB and switch it on.
 3. Press Install and allow MIDI access when Chrome asks. Leave the cable in until the page says it's done; the FM-1
    restarts into fm1-txtr.
