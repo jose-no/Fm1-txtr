@@ -50,6 +50,13 @@ Keys 1 to 12 are the first twelve keys from the left (F3 to E4). The last slot l
 
 Every parameter is listed with its range in `params/params.py`.
 
+## The load governor
+
+The bottom right of the screen shows the audio load. When it reaches 90 %, fm1-txtr starts fewer grains; at 97 % it
+also fades out the oldest ones (over 5 ms, so nothing clicks). While it is holding grains back the screen shows
+AUTO and the number of grains it allows. Once the load is back under 75 % it gives one grain back every quarter
+second, up to GRAIN, Engine, Grain cap. Lowering SOUND, Voice, Voices frees time as well.
+
 ## MIDI
 
 USB-MIDI in plays the FM voice by hand and can clock the sequencer (SEQ, Clock: MIDI). The sequencer's notes go out

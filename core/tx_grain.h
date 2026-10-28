@@ -22,6 +22,8 @@ typedef struct {
     uint8_t active, win, win2;
     float wmorph, peak; /* window morph amount, skewed peak position */
     float ka, kb;       /* 0.5 / peak, 0.5 / (1 - peak): the skew without a divide per sample */
+    float fade;         /* 1 while it plays; falls to 0 over 5 ms when the load governor ends it early */
+    uint8_t dying;
     int32_t delay;      /* samples into the block before it starts */
 } tx_grain;
 
@@ -42,8 +44,9 @@ typedef struct {
     float fs;
     uint16_t scale_mask;        /* from the sequencer, for pitch quantize */
     int nactive;
-    int shed;                   /* grains taken off the cap after an overload, given back slowly */
-    uint32_t shed_age;
+    int limit;                  /* the load governor's cap (0: none), below the Grain cap parameter */
+    uint8_t trim;               /* fade out the grains above the limit now */
+    int cap_now;                /* the cap in force at the last block */
 } tx_grains;
 
 void tx_grains_init(tx_grains *G, float fs, uint32_t seed);
@@ -51,7 +54,8 @@ void tx_grains_clear(tx_grains *G);
 /* writes TX_BLOCK mono input samples (unless frozen) and adds the cloud to outL/outR */
 void tx_grains_block(tx_grains *G, const tx_pstate *ps, const float *in, float *outL, float *outR);
 void tx_grains_hit(tx_grains *G, const tx_pstate *ps);         /* a sequencer hit (Trigger = Hits) */
-void tx_grains_overload(tx_grains *G);                          /* the render ran late: fewer grains for a while */
+/* the load governor: at most n grains (0: the Grain cap alone); trim: fade out the ones above it now */
+void tx_grains_limit(tx_grains *G, int n, int trim);
 
 /* For the live view: write head and up to max grains as 0..1 positions in the buffer. */
 float tx_grains_head(const tx_grains *G);

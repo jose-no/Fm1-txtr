@@ -28,6 +28,9 @@ static struct {
 static tx_grains G_grains TX_POOL;
 static tx_fx G_fx TX_POOL;
 
+/* the load governor (tx_load): its grain limit (0: none), frames until it may act again, frames calm */
+static int gov_limit, gov_wait, gov_frames;
+
 static void midi_push(uint8_t a, uint8_t b, uint8_t c)
 {
     if (E.mo_len + 3 > MIDI_OUT_LEN) return;
@@ -46,6 +49,7 @@ void tx_init(float fs, uint32_t seed)
     tx_seq_init(&E.seq, seed ^ 0x51u);
     tx_fm_init(fs);
     tx_grains_init(&G_grains, fs, seed ^ 0x6Au);
+    gov_limit = gov_wait = gov_frames = 0;
     tx_fx_init(&G_fx, fs);
     tx_mod_init(&E.mod, seed ^ 0x7Bu);
 }
@@ -150,7 +154,51 @@ void tx_panic(void)
     E.mo_len = 0;
 }
 
-void tx_overload(void) { tx_grains_overload(&G_grains); }
+/* ------------------------------------------------------------ the load governor */
+static int live_grains(void) { return G_grains.nactive; }
+
+void tx_load(int pct, int frames)
+{
+    int user = tx_int(&E.ps, TXP_GR_CAP);
+    int cur = gov_limit ? gov_limit : user;
+    int wait_frames = (int)(E.fs * 0.1f);              /* the load reading is smoothed over ~90 ms: let it catch up */
+    gov_frames += frames;
+    if (gov_wait > 0) gov_wait -= frames;
+    if (pct >= TX_LOAD_TRIM) {                         /* about to drop out: cut now and fade the extra */
+        if (gov_wait <= 0) {
+            int n = (live_grains() < cur ? live_grains() : cur) - 4;
+            gov_limit = n < 2 ? 2 : n;
+            gov_wait = wait_frames / 2;
+            tx_grains_limit(&G_grains, gov_limit, 1);
+        }
+    } else if (pct >= TX_LOAD_SHED) {                  /* high: fewer new grains */
+        if (gov_wait <= 0) {
+            int n = (live_grains() < cur ? live_grains() : cur) - 1;
+            gov_limit = n < 2 ? 2 : n;
+            gov_wait = wait_frames;
+            tx_grains_limit(&G_grains, gov_limit, 0);
+        }
+    } else if (pct < TX_LOAD_CALM && gov_limit) {      /* calm: give grains back, one every ~250 ms */
+        if (gov_frames >= (int)(E.fs * 0.25f)) {
+            gov_frames = 0;
+            gov_limit++;
+            if (gov_limit >= user) gov_limit = 0;
+            tx_grains_limit(&G_grains, gov_limit, 0);
+        }
+    } else {
+        gov_frames = 0;
+    }
+}
+
+void tx_overload(void)
+{
+    int cur = gov_limit ? gov_limit : tx_int(&E.ps, TXP_GR_CAP);
+    gov_limit = cur - 4 < 2 ? 2 : cur - 4;
+    gov_wait = (int)(E.fs * 0.05f);
+    tx_grains_limit(&G_grains, gov_limit, 1);
+}
+
+int tx_grain_limit(void) { return gov_limit; }
 
 void tx_midi_in(const uint8_t *m, int len)
 {
@@ -212,6 +260,8 @@ void tx_get_status(tx_status *st)
     for (int i = 0; i < 10; i++) st->mod[i] = E.mod.src[i];
     st->peak = E.peak;
     st->bpm = tx_seq_bpm(&E.seq, &E.ps);
+    st->gcap = G_grains.cap_now;
+    st->glimited = gov_limit != 0;
 }
 
 void tx_get_overview(uint8_t *out, int bins) { tx_grains_overview(&G_grains, out, bins); }

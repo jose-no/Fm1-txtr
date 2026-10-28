@@ -128,6 +128,7 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     midi_in();
     if (n > APP_BLOCK)
         n = APP_BLOCK;
+    tx_load((int)plat_cpu_pct(), (int)n);   /* the load governor: fewer grains when the audio runs out of time */
     tx_render(bufL, bufR, (int)n);
     midi_out();
     for (uint32_t i = 0; i < n; i++) {
@@ -696,10 +697,19 @@ static void draw_live(void)
     cv_text(bx, 65, &FONT_XS, t, st.playing ? C_HI : C_GRAY);
     if (st.frozen)
         cv_text(bx + 34, 65, &FONT_XS, "FROZEN", C_WHITE);
-    char c[12];
-    int_text((int32_t)plat_cpu_pct(), c);
+    char c[24] = "";
+    if (st.glimited) {                   /* the governor is holding grains back: how many it allows */
+        char n[8];
+        text_cat(c, "AUTO ");
+        int_text(st.gcap, n);
+        text_cat(c, n);
+        text_cat(c, "  ");
+    }
+    char p[8];
+    int_text((int32_t)plat_cpu_pct(), p);
+    text_cat(c, p);
     text_cat(c, "%");
-    cv_text(232 - text_w(&FONT_XS, c), 65, &FONT_XS, c, C_DIM);
+    cv_text(232 - text_w(&FONT_XS, c), 65, &FONT_XS, c, st.glimited ? C_AMB : C_DIM);
     cv_blit(0, 158);
 }
 

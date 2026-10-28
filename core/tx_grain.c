@@ -71,7 +71,9 @@ static void read_cfg(tx_grains *G, const tx_pstate *ps, gcfg *c)
     c->quant = tx_int(ps, TXP_GR_QUANT);
     c->ivset = tx_int(ps, TXP_GR_IVSET);
     c->win = tx_int(ps, TXP_GR_WIN);
-    c->cap = tx_clampi(tx_int(ps, TXP_GR_CAP) - G->shed, 2, TX_MAX_GRAINS);
+    c->cap = tx_clampi(tx_int(ps, TXP_GR_CAP), 1, TX_MAX_GRAINS);
+    if (G->limit > 0 && G->limit < c->cap) c->cap = G->limit;
+    G->cap_now = c->cap;
     c->pos = tx_val(ps, TXP_GR_POS) * 0.01f;
     c->size_ms = tx_val(ps, TXP_GR_SIZE);
     c->density = tx_val(ps, TXP_GR_DENSITY);
@@ -100,7 +102,6 @@ static void read_cfg(tx_grains *G, const tx_pstate *ps, gcfg *c)
     /* keep the level steady however many grains overlap */
     float overlap = c->density * c->size_ms * 0.001f;
     c->norm = 1.0f / sqrtf(overlap > 1.0f ? overlap : 1.0f);
-    if (G->shed && ++G->shed_age > 700u) { G->shed--; G->shed_age = 0; }   /* one grain back every ~1 s */
 }
 
 static float grain_semis(tx_grains *G, const gcfg *c)
@@ -163,6 +164,8 @@ static void spawn(tx_grains *G, const gcfg *c, int delay, float size_ms, float p
     g->ka = 0.5f / g->peak;
     g->kb = 0.5f / (1.0f - g->peak);
     g->delay = delay;
+    g->fade = 1.0f;
+    g->dying = 0;
     g->active = 1;
     G->nactive++;
 }
@@ -174,10 +177,10 @@ static float effective_pos(tx_grains *G, const gcfg *c)
     return p;
 }
 
-void tx_grains_overload(tx_grains *G)
+void tx_grains_limit(tx_grains *G, int n, int trim)
 {
-    G->shed = G->shed + 4 > TX_MAX_GRAINS ? TX_MAX_GRAINS : G->shed + 4;
-    G->shed_age = 0;
+    G->limit = n < 0 ? 0 : n > TX_MAX_GRAINS ? TX_MAX_GRAINS : n;
+    if (trim) G->trim = 1;
 }
 
 void tx_grains_hit(tx_grains *G, const tx_pstate *ps)
@@ -262,6 +265,22 @@ void tx_grains_block(tx_grains *G, const tx_pstate *ps, const float *in, float *
     memset(accL, 0, sizeof accL);
     memset(accR, 0, sizeof accR);
     int n_active = 0;
+    if (G->trim) {                      /* over the governor's limit: the furthest-along grains fade out */
+        G->trim = 0;
+        int live = 0;
+        for (int i = 0; i < TX_MAX_GRAINS; i++) live += G->g[i].active && !G->g[i].dying;
+        while (live > c.cap) {
+            tx_grain *best = 0;
+            for (int i = 0; i < TX_MAX_GRAINS; i++) {
+                tx_grain *g = &G->g[i];
+                if (g->active && !g->dying && (!best || g->phase > best->phase)) best = g;
+            }
+            if (!best) break;
+            best->dying = 1;
+            live--;
+        }
+    }
+    const float fade_step = 1.0f / (0.005f * G->fs);
     for (int i = 0; i < TX_MAX_GRAINS; i++) {
         tx_grain *g = &G->g[i];
         if (!g->active) continue;
@@ -274,6 +293,11 @@ void tx_grains_block(tx_grains *G, const tx_pstate *ps, const float *in, float *
             float u = t < pk ? t * ka : 0.5f + (t - pk) * kb;
             float w = win_at(g->win, u);
             if (g->wmorph > 0.0f) w += (win_at(g->win2, u) - w) * g->wmorph;
+            if (g->dying) {
+                g->fade -= fade_step;
+                if (g->fade <= 0.0f) { g->active = 0; break; }
+                w *= g->fade;
+            }
             int i0 = (int)g->pos;
             float f = g->pos - (float)i0;
             int i1 = i0 + 1;

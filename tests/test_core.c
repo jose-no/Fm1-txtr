@@ -151,6 +151,45 @@ static void test_engine_audio(void)
     CHECK(bad == 0);
 }
 
+static void test_governor(void)
+{
+    tx_init(44100.0f, 9);
+    tx_edit_snap(TX_SNAP_BOTH);
+    tx_set(TXP_GR_CAP, 24);
+    tx_set(TXP_GR_DENSITY, 1000);                       /* as many grains as the cap lets through */
+    tx_set(TXP_GR_SIZE, 900);
+    tx_play(1);
+    static float L[256], R[256];
+    for (int i = 0; i < 400; i++) tx_render(L, R, 256);   /* the cloud fills up */
+    tx_status st;
+    tx_get_status(&st);
+    int full = st.ngrains;
+    CHECK(full >= 20 && st.gcap == 24 && !st.glimited);
+    /* the load climbs past 97 %: the limit drops and the extra grains fade out within a few blocks */
+    for (int i = 0; i < 40; i++) { tx_load(98, 256); tx_render(L, R, 256); }
+    tx_get_status(&st);
+    printf("  governor: %d grains at 98%% load (was %d), cap now %d\n", st.ngrains, full, st.gcap);
+    CHECK(st.glimited && st.gcap < 24 && st.ngrains <= st.gcap);
+    int held = st.gcap;
+    /* at 92 %: no new grains above the limit, the limit keeps easing down */
+    for (int i = 0; i < 40; i++) { tx_load(92, 256); tx_render(L, R, 256); }
+    tx_get_status(&st);
+    CHECK(st.gcap <= held && st.ngrains <= st.gcap);
+    /* calm: grains come back, one every ~250 ms, until the Grain cap is in force again */
+    for (int i = 0; i < 44100 * 12 / 256; i++) { tx_load(40, 256); tx_render(L, R, 256); }
+    tx_get_status(&st);
+    printf("  governor: back to cap %d after 12 s calm\n", st.gcap);
+    CHECK(!st.glimited && st.gcap == 24);
+    /* nothing it does clicks: the output stays finite and bounded throughout */
+    int bad = 0;
+    for (int i = 0; i < 100; i++) {
+        tx_load(i % 2 ? 99 : 40, 256);
+        tx_render(L, R, 256);
+        for (int k = 0; k < 256; k++) if (!isfinite(L[k]) || fabsf(L[k]) > 1.0f) bad++;
+    }
+    CHECK(bad == 0);
+}
+
 int main(void)
 {
     test_euclid();
@@ -158,6 +197,7 @@ int main(void)
     test_params();
     test_seq_drift_zero();
     test_engine_audio();
+    test_governor();
     if (fails) { printf("%d check(s) failed\n", fails); return 1; }
     printf("all tests passed\n");
     return 0;
