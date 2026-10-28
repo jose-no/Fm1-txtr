@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fm1-txtr control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>fm1-txtr</h1>
+    <p id="engine-note">Granular texture synth for the M-VAVE FM-1, running in this browser</p>
+  </div>
+  <div class="transport">
+    <button id="start" class="primary">Start audio</button>
+    <button id="play" disabled aria-pressed="false">Play</button>
+    <button id="freeze" disabled aria-pressed="false">Freeze</button>
+    <button id="panic" disabled title="Stop all sound and clear the buffer and effects">Clear</button>
+  </div>
+  <div class="snapshots" role="group" aria-label="Snapshot being edited">
+    <span class="lbl">Edit</span>
+    <button data-snap="0" aria-pressed="true">A</button>
+    <button data-snap="1" aria-pressed="false">B</button>
+    <button id="copy-ab" title="Copy snapshot A into B">A to B</button>
+    <button id="copy-ba" title="Copy snapshot B into A">B to A</button>
+  </div>
+  <div class="patches">
+    <button id="save">Save patch</button>
+    <label class="file">Load patch<input id="load" type="file" accept=".txtr"></label>
+    <button id="init" title="Every parameter back to its default">Init</button>
+    <button id="midi" title="Play the engine from MIDI inputs and send its notes to MIDI outputs">Use MIDI</button>
+  </div>
+</header>
+
+<section class="live" aria-label="Live view">
+  <canvas id="cloud" height="250"></canvas>
+  <div class="live-side">
+    <canvas id="ring" width="160" height="160"></canvas>
+    <dl class="readout">
+      <div><dt>Tempo</dt><dd id="r-bpm">–</dd></div>
+      <div><dt>Grains</dt><dd id="r-grains">–</dd></div>
+      <div><dt>FM voices</dt><dd id="r-voices">–</dd></div>
+      <div><dt>Level</dt><dd><meter id="r-level" min="0" max="1" value="0"></meter></dd></div>
+    </dl>
+  </div>
+  <div class="mods" id="mods"></div>
+  <div class="roots" id="roots" role="group" aria-label="Root note"></div>
+</section>
+
+<main id="pages"></main>
+
+<footer>
+  <p>Edits go to the snapshot chosen above; Morph (SEQ, Perform) blends A into B. Double-click a control to reset it.
+  Patches are the same .txtr records the FM-1 stores in its 12 slots.</p>
+</footer>
+<script type="module" src="app.js"></script>
+</body>
+</html>
