@@ -21,6 +21,7 @@ typedef struct {
     float gl, gr;       /* gains, pan and amplitude included */
     uint8_t active, win, win2;
     float wmorph, peak; /* window morph amount, skewed peak position */
+    float ka, kb;       /* 0.5 / peak, 0.5 / (1 - peak): the skew without a divide per sample */
     int32_t delay;      /* samples into the block before it starts */
 } tx_grain;
 

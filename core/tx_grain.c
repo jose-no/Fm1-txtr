@@ -160,6 +160,8 @@ static void spawn(tx_grains *G, const gcfg *c, int delay, float size_ms, float p
     g->win2 = (uint8_t)((g->win + 1) % W_COUNT);
     g->wmorph = loop ? 0.0f : c->winmorph;
     g->peak = 0.5f + tx_clampf(c->skew, -1.0f, 1.0f) * 0.45f;
+    g->ka = 0.5f / g->peak;
+    g->kb = 0.5f / (1.0f - g->peak);
     g->delay = delay;
     g->active = 1;
     G->nactive++;
@@ -265,11 +267,11 @@ void tx_grains_block(tx_grains *G, const tx_pstate *ps, const float *in, float *
         if (!g->active) continue;
         int s = g->delay;
         g->delay = 0;
-        float pk = g->peak;
+        float pk = g->peak, ka = g->ka, kb = g->kb;
         for (; s < N; s++) {
             float t = g->phase;
             if (t >= 1.0f) { g->active = 0; break; }
-            float u = t < pk ? 0.5f * t / pk : 0.5f + 0.5f * (t - pk) / (1.0f - pk);
+            float u = t < pk ? t * ka : 0.5f + (t - pk) * kb;
             float w = win_at(g->win, u);
             if (g->wmorph > 0.0f) w += (win_at(g->win2, u) - w) * g->wmorph;
             int i0 = (int)g->pos;
