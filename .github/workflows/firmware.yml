@@ -7,7 +7,7 @@ on:
   pull_request:
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write                # the site goes to the `site` branch
 env:
   VERSION: "0.1"
 jobs:
@@ -67,22 +67,14 @@ jobs:
         with:
           name: fm1-txtr-installer-site
           path: build/site
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: build/site
-  # publishes the site at https://jose-no.github.io/fm1-txtr/ once Pages is on (Settings > Pages > Source: GitHub
-  # Actions); until then this job fails without stopping the build
-  pages:
-    needs: build
-    if: github.event_name != 'pull_request'
-    continue-on-error: true
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-    steps:
-      - id: deploy
-        uses: actions/deploy-pages@v4
+      - name: Publish the site to the `site` branch
+        if: github.event_name == 'push'
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd build/site
+          touch .nojekyll
+          git init -q -b site
+          git add -A
+          git -c user.name="fm1-txtr CI" -c user.email="ci@users.noreply.github.com" commit -q -m "site from $GITHUB_SHA ($GITHUB_REF_NAME)"
+          git push -q -f "https://x-access-token:$TOKEN@github.com/$GITHUB_REPOSITORY.git" site
