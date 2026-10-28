@@ -8,6 +8,8 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+env:
+  VERSION: "0.1"
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -28,21 +30,25 @@ jobs:
           path: ~/.jieli
           key: jieli-${{ hashFiles('fm1-base/tools/get_toolchain.sh', 'fm1-base/bsp/tools/get_sdk.sh') }}
       - name: JieLi toolchain
-        run: test -x ~/.jieli/toolchain/pi32v2/bin/clang || sh fm1-base/tools/get_toolchain.sh ~/.jieli
+        run: test -x ~/.jieli/toolchain/pi32v2/bin/clang || tools/ci_step.sh toolchain sh fm1-base/tools/get_toolchain.sh ~/.jieli
       - name: JieLi AC79 SDK (the three files the package uses)
-        run: test -f ~/.jieli/ac79-sdk/cpu/wl82/tools/uboot.boot || sh fm1-base/bsp/tools/get_sdk.sh ~/.jieli/ac79-sdk
+        run: tools/ci_step.sh sdk tools/ci_get_sdk.sh ~/.jieli/ac79-sdk
       - name: Engine tests
-        run: make test
+        run: tools/ci_step.sh tests make test
       - name: The app in the host simulator
         run: |
-          python3 fm1-base/tools/build.py . --host
+          tools/ci_step.sh host-build python3 fm1-base/tools/build.py . --host
           build/host/fm1-txtr_host tests/fm1/basic.txt build/host | tee build/host/sim.txt
           ! grep -q "EXPECTATIONS FAILED" build/host/sim.txt
       - name: Firmware package
         env:
           JIELI_TOOLCHAIN: /home/runner/.jieli/toolchain
           AC79_SDK: /home/runner/.jieli/ac79-sdk
-        run: python3 fm1-base/tools/build.py . | tee build/firmware-build.txt
+        run: |
+          tools/ci_step.sh firmware python3 fm1-base/tools/build.py . --release "$VERSION" | tee build/firmware-build.txt
+          grep -E "^  (ok|FAIL) |^package|^app |^parts" build/firmware-build.txt | sed 's/^/::notice title=firmware::/'
+      - name: The site, with the web installer
+        run: tools/ci_step.sh site python3 fm1-base/tools/make_site.py . "build/fm1-txtr-$VERSION.fwsc" "$VERSION" build/site
       - uses: actions/upload-artifact@v4
         with:
           name: fm1-txtr-firmware
@@ -52,3 +58,26 @@ jobs:
             build/firmware-build.txt
             build/host/*.png
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fm1-txtr-installer-site
+          path: build/site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/site
+  # publishes the site at https://jose-no.github.io/fm1-txtr/ once Pages is on (Settings > Pages > Source: GitHub
+  # Actions); until then this job fails without stopping the build
+  pages:
+    needs: build
+    if: github.event_name != 'pull_request'
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
