@@ -47,6 +47,11 @@ jobs:
         run: |
           tools/ci_step.sh firmware python3 fm1-base/tools/build.py . --release "$VERSION" | tee build/firmware-build.txt
           grep -E "^  (ok|FAIL) |^package|^app |^parts" build/firmware-build.txt | sed 's/^/::notice title=firmware::/'
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.74
+      - name: The FM-1 app in the browser (the site's emulator)
+        run: tools/ci_step.sh emu python3 fm1-base/tools/build.py . --web
       - name: The site, with the web installer
         run: tools/ci_step.sh site python3 fm1-base/tools/make_site.py . "build/fm1-txtr-$VERSION.fwsc" "$VERSION" build/site
       - uses: actions/upload-artifact@v4
