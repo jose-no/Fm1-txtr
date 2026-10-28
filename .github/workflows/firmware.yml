@@ -1,0 +1,80 @@
+# Build fm1-txtr for the FM-1: the engine's tests, the app in fm1-base's host simulator, then the firmware
+# package (build/fm1-txtr.fwsc) with JieLi's toolchain and SDK. The package is attached to the run as an artifact.
+name: Firmware
+on:
+  push:
+    branches: [main, fm1-device]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: write                # the site goes to the `site` branch
+env:
+  VERSION: "0.1"
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python packages (fonts)
+        run: pip install Pillow fonttools
+      - name: Libraries JieLi's clang 4.0.1 links against
+        run: sudo apt-get install -y libtinfo5 libncurses5 || true
+      - name: Cache the toolchain and the SDK
+        uses: actions/cache@v4
+        with:
+          path: ~/.jieli
+          key: jieli-${{ hashFiles('fm1-base/tools/get_toolchain.sh', 'fm1-base/bsp/tools/get_sdk.sh') }}
+      - name: JieLi toolchain
+        run: test -x ~/.jieli/toolchain/pi32v2/bin/clang || tools/ci_step.sh toolchain sh fm1-base/tools/get_toolchain.sh ~/.jieli
+      - name: JieLi AC79 SDK (the three files the package uses)
+        run: tools/ci_step.sh sdk tools/ci_get_sdk.sh ~/.jieli/ac79-sdk
+      - name: Engine tests
+        run: tools/ci_step.sh tests make test
+      - name: The app in the host simulator
+        run: |
+          tools/ci_step.sh host-build python3 fm1-base/tools/build.py . --host
+          build/host/fm1-txtr_host tests/fm1/basic.txt build/host | tee build/host/sim.txt
+          ! grep -q "EXPECTATIONS FAILED" build/host/sim.txt
+      - name: Firmware package
+        env:
+          JIELI_TOOLCHAIN: /home/runner/.jieli/toolchain
+          AC79_SDK: /home/runner/.jieli/ac79-sdk
+        run: |
+          tools/ci_step.sh firmware python3 fm1-base/tools/build.py . --release "$VERSION" | tee build/firmware-build.txt
+          grep -E "^  (ok|FAIL) |^package|^app |^parts" build/firmware-build.txt | sed 's/^/::notice title=firmware::/'
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.74
+      - name: The FM-1 app in the browser (the site's emulator)
+        run: tools/ci_step.sh emu python3 fm1-base/tools/build.py . --web
+      - name: The site, with the web installer
+        run: tools/ci_step.sh site python3 fm1-base/tools/make_site.py . "build/fm1-txtr-$VERSION.fwsc" "$VERSION" build/site
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fm1-txtr-firmware
+          path: |
+            build/*.fwsc
+            build/fm1-txtr.bin
+            build/firmware-build.txt
+            build/host/*.png
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fm1-txtr-installer-site
+          path: build/site
+      - name: Publish the site to the `site` branch
+        if: github.event_name == 'push'
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd build/site
+          touch .nojekyll
+          git init -q -b site
+          git add -A
+          git -c user.name="fm1-txtr CI" -c user.email="ci@users.noreply.github.com" commit -q -m "site from $GITHUB_SHA ($GITHUB_REF_NAME)"
+          git push -q -f "https://x-access-token:$TOKEN@github.com/$GITHUB_REPOSITORY.git" site
