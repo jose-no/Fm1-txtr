@@ -1,5 +1,4 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-#include <string.h>
 #include "tx_fx.h"
 
 /* reverb line lengths at Size 100% (mutually prime) and input allpass lengths */
@@ -74,7 +73,7 @@ void tx_fx_block(tx_fx *F, const tx_pstate *ps, float bpm, float *L, float *R)
         float fc = tx_clampf(tx_val(ps, TXP_SP_FCUT), 20.0f, 0.45f * fs);
         float res = tx_val(ps, TXP_SP_FRES) * 0.01f;
         float drive = tx_val(ps, TXP_SP_FDRIVE) * 0.01f;
-        float g = tanf((float)M_PI * fc / fs), k = 2.0f - 1.94f * res;
+        float g = tanf(TX_PI * fc / fs), k = 2.0f - 1.94f * res;
         float a1 = 1.0f / (1.0f + g * (g + k)), a2 = g * a1, a3 = g * a2;
         float pre = 1.0f + drive * 6.0f, post = 1.0f / (1.0f + drive * 2.0f);
         int bypass = type == 0 && fc > 0.44f * fs && res < 0.01f && drive < 0.01f;
@@ -134,10 +133,13 @@ void tx_fx_block(tx_fx *F, const tx_pstate *ps, float bpm, float *L, float *R)
         float mix = tx_val(ps, TXP_DL_MIX) * 0.01f;
         float dfs = fs / TX_DLY_DECIM;
         if (mix > 0.0f || fb > 0.0f) {
+            /* wobble: the LFO once per block, interpolated */
+            float w0 = sinf(TX_TWO_PI * F->dl_lfo);
+            F->dl_lfo += mrate * (float)N / fs;
+            F->dl_lfo -= floorf(F->dl_lfo);
+            float w1 = sinf(TX_TWO_PI * F->dl_lfo), dw = (w1 - w0) / (float)N;
             for (int s = 0; s < N; s++) {
-                F->dl_lfo += mrate / fs;
-                F->dl_lfo -= floorf(F->dl_lfo);
-                float dms = ms + sinf(TX_TWO_PI * F->dl_lfo) * mdepth * 5.0f;
+                float dms = ms + (w0 + dw * (float)s) * mdepth * 5.0f;
                 float d = dms * 0.001f * dfs;
                 float pos = (float)F->dl_w + 0.5f * (float)F->dl_phase - d;
                 float y[2];
@@ -189,6 +191,13 @@ void tx_fx_block(tx_fx *F, const tx_pstate *ps, float bpm, float *L, float *R)
                 len[i] = (float)RV_LEN[i] * size;
                 gain[i] = powf(10.0f, -3.0f * len[i] / (fs * rt));
             }
+            /* tank modulation: once per block, interpolated (lines 0 and 2 move) */
+            float m0[TX_RV_LINES], dm[TX_RV_LINES];
+            for (int i = 0; i < TX_RV_LINES; i++) m0[i] = i & 1 ? 0.0f : sinf(TX_TWO_PI * (F->rv_lfo + 0.25f * (float)i)) * modd;
+            F->rv_lfo += 0.6f * (float)N / fs;
+            F->rv_lfo -= floorf(F->rv_lfo);
+            for (int i = 0; i < TX_RV_LINES; i++)
+                dm[i] = ((i & 1 ? 0.0f : sinf(TX_TWO_PI * (F->rv_lfo + 0.25f * (float)i)) * modd) - m0[i]) / (float)N;
             for (int s = 0; s < N; s++) {
                 float x = 0.5f * (L[s] + R[s]);
                 /* pre-delay at half rate */
@@ -214,11 +223,9 @@ void tx_fx_block(tx_fx *F, const tx_pstate *ps, float bpm, float *L, float *R)
                     F->rv_ap_i[a] = (i + 1) % RV_AP_LEN[a];
                 }
                 /* the tank */
-                F->rv_lfo += 0.6f / fs;
-                F->rv_lfo -= floorf(F->rv_lfo);
                 float o[TX_RV_LINES];
                 for (int i = 0; i < TX_RV_LINES; i++) {
-                    float m = i & 1 ? 0.0f : sinf(TX_TWO_PI * (F->rv_lfo + 0.25f * (float)i)) * modd;
+                    float m = m0[i] + dm[i] * (float)s;
                     o[i] = rd16(F->rv_line[i], TX_RV_MAX, (float)F->rv_w - len[i] - m - 2.0f);
                     F->rv_damp[i] += (o[i] - F->rv_damp[i]) * dk;
                     o[i] = F->rv_damp[i] * gain[i];

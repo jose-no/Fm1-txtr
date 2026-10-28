@@ -37,6 +37,7 @@ void tx_freeze(int on);
 void tx_note_on(int note, int vel);     /* played by hand (keys with SHIFT, or MIDI in) */
 void tx_note_off(int note);
 void tx_panic(void);                    /* everything off, buffer and effects cleared */
+void tx_overload(void);                 /* the render ran late: shed grains for a while */
 
 /* MIDI in: one complete message (status + data) */
 void tx_midi_in(const uint8_t *msg, int len);

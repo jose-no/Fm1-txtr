@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-#include <string.h>
-#include <math.h>
+#include "tx_util.h"
 #include "tx_param.h"
 
 static int clampraw(int id, int raw)
@@ -14,7 +13,7 @@ void txp_init(tx_pstate *ps)
     memset(ps, 0, sizeof *ps);
     for (int i = 0; i < TX_NPARAMS; i++)
         ps->snap[0][i] = ps->snap[1][i] = tx_pdefs[i].rdef;
-    strcpy(ps->name, "Init");
+    memcpy(ps->name, "Init", 5);
     ps->dirty = 1;
     txp_morph(ps);
     memcpy(ps->eff, ps->base, sizeof ps->eff);

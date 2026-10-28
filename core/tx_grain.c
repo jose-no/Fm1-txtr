@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* fm1-txtr — grain cloud. Original code; the feature set (position/size/density/texture,
  * freeze, pitch-shift and looping modes) is modelled on Mutable Instruments Clouds. */
-#include <string.h>
 #include "tx_grain.h"
 #include "tx_scale.h"
 
@@ -72,7 +71,7 @@ static void read_cfg(tx_grains *G, const tx_pstate *ps, gcfg *c)
     c->quant = tx_int(ps, TXP_GR_QUANT);
     c->ivset = tx_int(ps, TXP_GR_IVSET);
     c->win = tx_int(ps, TXP_GR_WIN);
-    c->cap = tx_clampi(tx_int(ps, TXP_GR_CAP), 1, TX_MAX_GRAINS);
+    c->cap = tx_clampi(tx_int(ps, TXP_GR_CAP) - G->shed, 2, TX_MAX_GRAINS);
     c->pos = tx_val(ps, TXP_GR_POS) * 0.01f;
     c->size_ms = tx_val(ps, TXP_GR_SIZE);
     c->density = tx_val(ps, TXP_GR_DENSITY);
@@ -101,7 +100,7 @@ static void read_cfg(tx_grains *G, const tx_pstate *ps, gcfg *c)
     /* keep the level steady however many grains overlap */
     float overlap = c->density * c->size_ms * 0.001f;
     c->norm = 1.0f / sqrtf(overlap > 1.0f ? overlap : 1.0f);
-    (void)G;
+    if (G->shed && ++G->shed_age > 700u) { G->shed--; G->shed_age = 0; }   /* one grain back every ~1 s */
 }
 
 static float grain_semis(tx_grains *G, const gcfg *c)
@@ -171,6 +170,12 @@ static float effective_pos(tx_grains *G, const gcfg *c)
     float p = c->pos + G->scan + tx_randb(&G->rng) * c->spray * 0.5f;
     p -= floorf(p);
     return p;
+}
+
+void tx_grains_overload(tx_grains *G)
+{
+    G->shed = G->shed + 4 > TX_MAX_GRAINS ? TX_MAX_GRAINS : G->shed + 4;
+    G->shed_age = 0;
 }
 
 void tx_grains_hit(tx_grains *G, const tx_pstate *ps)
@@ -251,7 +256,7 @@ void tx_grains_block(tx_grains *G, const tx_pstate *ps, const float *in, float *
 
     /* render the grains */
     const float flen = (float)G->len;
-    float accL[TX_BLOCK], accR[TX_BLOCK];
+    static float accL[TX_BLOCK], accR[TX_BLOCK];
     memset(accL, 0, sizeof accL);
     memset(accR, 0, sizeof accR);
     int n_active = 0;
@@ -330,8 +335,7 @@ void tx_grains_overview(const tx_grains *G, uint8_t *out, int bins)
 {
     uint32_t len = G->len;
     for (int b = 0; b < bins; b++) {
-        uint32_t s0 = (uint32_t)((uint64_t)len * (uint32_t)b / (uint32_t)bins);
-        uint32_t s1 = (uint32_t)((uint64_t)len * (uint32_t)(b + 1) / (uint32_t)bins);
+        uint32_t s0 = len / (uint32_t)bins * (uint32_t)b, s1 = len / (uint32_t)bins * (uint32_t)(b + 1);
         int peak = 0;
         for (uint32_t s = s0; s < s1; s += 4) {       /* every 4th sample is plenty for a picture */
             int v = G->buf[s] < 0 ? -G->buf[s] : G->buf[s];

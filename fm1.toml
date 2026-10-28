@@ -1,0 +1,20 @@
+# fm1-txtr's FM-1 build settings (fm1-base/tools/build.py). Build from this directory:
+#   python3 fm1-base/tools/build.py .            the firmware package: build/fm1-txtr.fwsc (JieLi toolchain, AC79 SDK)
+#   python3 fm1-base/tools/build.py . --host     the host simulator: build/host/fm1-txtr_host
+name = "fm1-txtr"
+id_prefix = "FM-1_58"          # package identity: dev FM-1_5800, releases FM-1_58XXYYZZ
+usb_manufacturer = "fm1-txtr"
+usb_product = "TXTR FM-1"
+words = "words.tsv"
+ble = false
+# the engine: separate units at -O2, built for the FM-1's single-precision FPU and its fastmath
+o2 = ["core/*.c", "core/gen/*.c"]
+o2_cflags = ["-DTX_FM1"]
+include = ["core", "core/gen", "third_party/fm6"]
+# not the app's own code: left out of the register-access check
+vendored = ["fm1-base", "web", "tests", "tools", "build"]
+# the site (fm1-base/tools/make_site.py)
+tagline = "a generative granular texture synth"
+repo = "https://github.com/Jose-no/fm1-txtr"
+licence = "GPL-3.0-or-later"
+credits = "Built on fm1-base and felucca-bsp (MPL-2.0); the FM voice is msfa (Apache-2.0) in Felucca's C port."

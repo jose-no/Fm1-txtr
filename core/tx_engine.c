@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-#include <string.h>
+#include "tx_util.h"
 #include "tx_engine.h"
 #include "tx_seq.h"
 #include "tx_fm.h"
@@ -15,8 +15,6 @@ static struct {
     float fs;
     tx_pstate ps;
     tx_seq seq;
-    tx_grains grains;
-    tx_fx fx;
     tx_mod mod;
     uint8_t edit;
     float L[TX_BLOCK], R[TX_BLOCK];
@@ -25,6 +23,10 @@ static struct {
     int mo_len;
     float peak;
 } E;
+
+/* the big buffers: in the FM-1's RAM pool */
+static tx_grains G_grains TX_POOL;
+static tx_fx G_fx TX_POOL;
 
 static void midi_push(uint8_t a, uint8_t b, uint8_t c)
 {
@@ -43,8 +45,8 @@ void tx_init(float fs, uint32_t seed)
     txp_init(&E.ps);
     tx_seq_init(&E.seq, seed ^ 0x51u);
     tx_fm_init(fs);
-    tx_grains_init(&E.grains, fs, seed ^ 0x6Au);
-    tx_fx_init(&E.fx, fs);
+    tx_grains_init(&G_grains, fs, seed ^ 0x6Au);
+    tx_fx_init(&G_fx, fs);
     tx_mod_init(&E.mod, seed ^ 0x7Bu);
 }
 
@@ -55,16 +57,16 @@ static void block(void)
     float bpm = tx_seq_bpm(&E.seq, ps);
 
     txp_morph(ps);
-    tx_mod_block(&E.mod, ps, bpm, (float)N / E.fs, E.fx.follower, E.seq.last_note, E.seq.last_vel);
-    E.grains.scale_mask = tx_scale_mask(tx_int(ps, TXP_NOTE_SCALE), tx_int(ps, TXP_NOTE_CUSTOM));
+    tx_mod_block(&E.mod, ps, bpm, (float)N / E.fs, G_fx.follower, E.seq.last_note, E.seq.last_vel);
+    G_grains.scale_mask = tx_scale_mask(tx_int(ps, TXP_NOTE_SCALE), tx_int(ps, TXP_NOTE_CUSTOM));
 
     /* the sequencer plays the FM voice */
-    tx_event ev[16];
+    static tx_event ev[16];              /* static: the render runs on the audio interrupt's stack */
     int ne = tx_seq_block(&E.seq, ps, E.fs, N, ev, 16);
     for (int i = 0; i < ne; i++) {
         if (ev[i].type == TX_EV_ON) {
             tx_fm_note_on(ps, ev[i].note, ev[i].vel);
-            tx_grains_hit(&E.grains, ps);
+            tx_grains_hit(&G_grains, ps);
             midi_push(0x90, ev[i].note, ev[i].vel);
         } else {
             tx_fm_note_off(ev[i].note);
@@ -72,25 +74,25 @@ static void block(void)
         }
     }
 
-    float fm[TX_BLOCK], in[TX_BLOCK];
+    static float fm[TX_BLOCK], in[TX_BLOCK];
     memset(fm, 0, sizeof fm);
     tx_fm_render(ps, fm);
     for (int s = 0; s < N; s++) {
         fm[s] *= FM_LEVEL;
-        in[s] = fm[s] + E.fx.fb[s];
+        in[s] = fm[s] + G_fx.fb[s];
     }
 
-    float cl[TX_BLOCK], cr[TX_BLOCK];
+    static float cl[TX_BLOCK], cr[TX_BLOCK];
     memset(cl, 0, sizeof cl);
     memset(cr, 0, sizeof cr);
-    tx_grains_block(&E.grains, ps, in, cl, cr);
+    tx_grains_block(&G_grains, ps, in, cl, cr);
 
     float blend = tx_val(ps, TXP_OUT_BLEND) * 0.01f;
     for (int s = 0; s < N; s++) {
         E.L[s] = fm[s] * (1.0f - blend) + cl[s] * blend;
         E.R[s] = fm[s] * (1.0f - blend) + cr[s] * blend;
     }
-    tx_fx_block(&E.fx, ps, bpm, E.L, E.R);
+    tx_fx_block(&G_fx, ps, bpm, E.L, E.R);
 
     float pk = 0.0f;
     for (int s = 0; s < N; s++) pk = fmaxf(pk, fmaxf(fabsf(E.L[s]), fabsf(E.R[s])));
@@ -134,7 +136,7 @@ void tx_freeze(int on) { txp_set(&E.ps, TXP_BUF_FREEZE, TX_SNAP_BOTH, on ? 1 : 0
 void tx_note_on(int note, int vel)
 {
     tx_fm_note_on(&E.ps, note, vel);
-    tx_grains_hit(&E.grains, &E.ps);
+    tx_grains_hit(&G_grains, &E.ps);
 }
 
 void tx_note_off(int note) { tx_fm_note_off(note); }
@@ -143,10 +145,12 @@ void tx_panic(void)
 {
     tx_seq_stop(&E.seq);
     tx_fm_all_off();
-    tx_grains_clear(&E.grains);
-    tx_fx_clear(&E.fx);
+    tx_grains_clear(&G_grains);
+    tx_fx_clear(&G_fx);
     E.mo_len = 0;
 }
+
+void tx_overload(void) { tx_grains_overload(&G_grains); }
 
 void tx_midi_in(const uint8_t *m, int len)
 {
@@ -171,7 +175,7 @@ int tx_midi_out(uint8_t *buf, int cap)
     int n = E.mo_len < cap ? E.mo_len : cap;
     n -= n % 3;
     memcpy(buf, E.midi_out, (size_t)n);
-    memmove(E.midi_out, E.midi_out + n, (size_t)(E.mo_len - n));
+    for (int i = n; i < E.mo_len; i++) E.midi_out[i - n] = E.midi_out[i];
     E.mo_len -= n;
     return n;
 }
@@ -200,8 +204,8 @@ void tx_get_status(tx_status *st)
     st->step = (uint8_t)(E.seq.step < 0 ? 0 : E.seq.step);
     st->steps = (uint8_t)E.seq.steps;
     st->pattern = E.seq.pattern;
-    st->head = tx_grains_head(&E.grains);
-    st->ngrains = tx_grains_live(&E.grains, st->gpos, st->gamp, TX_LIVE_GRAINS);
+    st->head = tx_grains_head(&G_grains);
+    st->ngrains = tx_grains_live(&G_grains, st->gpos, st->gamp, TX_LIVE_GRAINS);
     st->fm_voices = tx_fm_active();
     st->last_note = E.seq.last_note;
     st->last_vel = E.seq.last_vel;
@@ -210,4 +214,4 @@ void tx_get_status(tx_status *st)
     st->bpm = tx_seq_bpm(&E.seq, &E.ps);
 }
 
-void tx_get_overview(uint8_t *out, int bins) { tx_grains_overview(&E.grains, out, bins); }
+void tx_get_overview(uint8_t *out, int bins) { tx_grains_overview(&G_grains, out, bins); }

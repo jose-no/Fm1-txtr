@@ -1,5 +1,4 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-#include <string.h>
 #include "tx_seq.h"
 #include "tx_scale.h"
 

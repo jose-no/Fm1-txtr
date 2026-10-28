@@ -4,11 +4,35 @@
 #define TX_UTIL_H
 
 #include <stdint.h>
-#include <math.h>
+#include <stddef.h>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
+#ifdef TX_FM1
+/* The FM-1 has no C library: fm1-base's fastmath.h (single precision, branch-light) stands in for libm, and
+ * felucca-bsp's libc.c gives memset, memcpy and memcmp. */
+#include "fastmath.h"
+void *memset(void *d, int c, size_t n);
+void *memcpy(void *d, const void *s, size_t n);
+int memcmp(const void *a, const void *b, size_t n);
+#define sinf(x) fm_sinf(x)
+#define cosf(x) fm_cosf(x)
+#define tanf(x) fm_tanf(x)
+#define expf(x) fm_expf(x)
+#define exp2f(x) fm_exp2f(x)
+#define logf(x) fm_logf(x)
+#define powf(x, y) fm_powf(x, y)
+#define sqrtf(x) fm_sqrtf(x)
+#define floorf(x) fm_floorf(x)
+#define fabsf(x) fm_fabsf(x)
+#define fminf(a, b) fm_minf(a, b)
+#define fmaxf(a, b) fm_maxf(a, b)
+#define lrintf(x) ((long)fm_floorf((x) + 0.5f))
+#define isfinite(x) ((x) == (x) && fm_fabsf(x) < 3.0e38f)
+#else
+#include <string.h>
+#include <math.h>
 #endif
+
+#define TX_PI 3.14159265358979f
 #define TX_TWO_PI 6.28318530717958647692f
 
 static inline float tx_clampf(float x, float lo, float hi) { return x < lo ? lo : x > hi ? hi : x; }

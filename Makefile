@@ -9,33 +9,27 @@
 CC      ?= gcc
 CXX     ?= g++
 PY      ?= python3
-CFLAGS  += -MMD -MP -O2 -std=c99 -Wall -Wextra -Icore -Icore/gen -Ithird_party/msfa
-CXXFLAGS+= -MMD -MP -O2 -std=c++14 -Wall -Icore -Icore/gen -Ithird_party/msfa
+CFLAGS  += -MMD -MP -O2 -std=c99 -Wall -Wextra -Wno-unused-function -Icore -Icore/gen -Ithird_party/fm6
 LDLIBS  += -lm
 
 CORE_C   := $(wildcard core/*.c) core/gen/tx_params.c
-CORE_CXX := $(wildcard core/*.cpp)
-MSFA     := $(filter-out third_party/msfa/EngineMkI.cpp,$(wildcard third_party/msfa/*.cpp))
-OBJ      := $(patsubst %,build/host/%.o,$(CORE_C) $(CORE_CXX) $(MSFA))
+OBJ      := $(patsubst %,build/test/%.o,$(CORE_C))
 
 all: test
 
 gen core/gen/tx_params.c core/gen/tx_params.h web/gen/params.js: params/params.py tools/gen_params.py
 	$(PY) tools/gen_params.py
+	$(PY) tools/gen_fm6_tables.py
 
-build/host/%.c.o: %.c core/gen/tx_params.h
+build/test/%.c.o: %.c core/gen/tx_params.h
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-build/host/%.cpp.o: %.cpp core/gen/tx_params.h
-	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -c $< -o $@
+build/test_core: build/test/tests/test_core.c.o $(OBJ)
+	$(CC) $^ -o $@ $(LDLIBS)
 
-build/test_core: build/host/tests/test_core.c.o $(OBJ)
-	$(CXX) $^ -o $@ $(LDLIBS)
-
-build/render: build/host/tools/render.c.o $(OBJ)
-	$(CXX) $^ -o $@ $(LDLIBS)
+build/render: build/test/tools/render.c.o $(OBJ)
+	$(CC) $^ -o $@ $(LDLIBS)
 
 test: build/test_core
 	./build/test_core
@@ -46,21 +40,17 @@ render: build/render
 
 # ---------------------------------------------------------------- browser (WebAssembly via Zig)
 ZIG       ?= $(PY) -m ziglang
-WASM_COMMON = -target wasm32-wasi -O2 -Icore -Icore/gen -Ithird_party/msfa -DTX_WEB -fno-exceptions
-WASM_OBJ  := $(patsubst %,build/wasm/%.o,$(CORE_C) $(CORE_CXX) $(MSFA) web/txtr_web.c)
+WASM_COMMON = -target wasm32-wasi -O2 -Icore -Icore/gen -Ithird_party/fm6 -DTX_WEB -Wno-unused-function
+WASM_OBJ  := $(patsubst %,build/wasm/%.o,$(CORE_C) web/txtr_web.c)
 
 build/wasm/%.c.o: %.c core/gen/tx_params.h
 	@mkdir -p $(dir $@)
 	$(ZIG) cc $(WASM_COMMON) -std=c99 -MMD -MP -c $< -o $@
 
-build/wasm/%.cpp.o: %.cpp core/gen/tx_params.h
-	@mkdir -p $(dir $@)
-	$(ZIG) c++ $(WASM_COMMON) -std=c++14 -fno-rtti -MMD -MP -c $< -o $@
-
 web: web/txtr.wasm
 
 web/txtr.wasm: $(WASM_OBJ)
-	$(ZIG) c++ $(WASM_COMMON) -mexec-model=reactor -Wl,--export-dynamic -Wl,--strip-all $^ -o $@
+	$(ZIG) cc $(WASM_COMMON) -mexec-model=reactor -Wl,--export-dynamic -Wl,--strip-all $^ -o $@
 
 clean:
 	rm -rf build out

@@ -99,7 +99,7 @@ LFO_RATE = free_then_sync(40, 0.01, 20, 'Hz', LFO_SYNC, LFO_SYNC_BARS, fmt_hz)
 
 DLY_SYNC = ['1/32', '1/16', '1/16 d', '1/8 t', '1/8', '1/8 d', '1/4 t', '1/4', '1/4 d', '1/2']
 DLY_SYNC_BARS = [1 / 32, 1 / 16, 3 / 32, 1 / 12, 1 / 8, 3 / 16, 1 / 6, 1 / 4, 3 / 8, 1 / 2]
-DLY_TIME = free_then_sync(40, 10, 800, 'ms', DLY_SYNC, DLY_SYNC_BARS, fmt_ms)
+DLY_TIME = free_then_sync(40, 10, 500, 'ms', DLY_SYNC, DLY_SYNC_BARS, fmt_ms)   # the line holds ~0.5 s
 
 SCALES = ['Major', 'Minor', 'Dorian', 'Phrygian', 'Lydian', 'Mixolyd.', 'Locrian', 'Harm min',
           'Mel min', 'Maj pent', 'Min pent', 'Whole', 'Hirajoshi', 'In-sen', 'Chromatic', 'Custom']
@@ -231,12 +231,12 @@ P('gr_burst', 'Burst cnt', 'GRAIN', 'Trigger', 1, Int(1, 16), 4)
 P('gr_burstspr', 'Burst spr', 'GRAIN', 'Trigger', 2, Exp(1, 2000, 'ms'), 120)
 P('gr_jitter', 'Jitter', 'GRAIN', 'Trigger', 3, Pct(), 50)
 
-P('buf_len', 'Length', 'GRAIN', 'Buffer', 0, Exp(0.25, 3.6, 's'), 3)
+P('buf_len', 'Length', 'GRAIN', 'Buffer', 0, Exp(0.25, 3.25, 's'), 3)
 P('buf_freeze', 'Freeze', 'GRAIN', 'Buffer', 1, Enum(['Off', 'On']), 'Off', morph=False)
 P('buf_mode', 'Write', 'GRAIN', 'Buffer', 2, Enum(['Overwrite', 'Overdub']), 'Overwrite')
 P('buf_in', 'Input', 'GRAIN', 'Buffer', 3, Pct(), 80)
 
-P('gr_cap', 'Grain cap', 'GRAIN', 'Engine', 0, Int(4, 48, 'grains'), 24, mod=False)
+P('gr_cap', 'Grain cap', 'GRAIN', 'Engine', 0, Int(4, 48, 'grains'), 16, mod=False)
 P('gr_mode', 'Mode', 'GRAIN', 'Engine', 1, Enum(['Granular', 'Pitch shift', 'Loop delay']), 'Granular')
 P('gr_width', 'Stereo', 'GRAIN', 'Engine', 2, Pct(), 70)
 P('gr_level', 'Cloud lvl', 'GRAIN', 'Engine', 3, Pct(), 80)
@@ -253,7 +253,7 @@ P('sp_fold', 'Wavefold', 'SPACE', 'Color', 1, Pct(), 0)
 P('sp_crush', 'Bitcrush', 'SPACE', 'Color', 2, Pct(), 0)
 P('sp_srr', 'Rate red.', 'SPACE', 'Color', 3, Pct(), 0)
 
-P('dl_time', 'Time', 'SPACE', 'Delay', 0, DLY_TIME, '1/4 d')
+P('dl_time', 'Time', 'SPACE', 'Delay', 0, DLY_TIME, '1/8 d')
 P('dl_fb', 'Feedback', 'SPACE', 'Delay', 1, Lin(0, 110, '%'), 40)
 P('dl_tone', 'Tone', 'SPACE', 'Delay', 2, Pct(), 55)
 P('dl_width', 'Ping-pong', 'SPACE', 'Delay', 3, Pct(), 70)

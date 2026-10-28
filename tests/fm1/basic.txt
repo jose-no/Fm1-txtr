@@ -1,0 +1,80 @@
+# fm1-txtr in fm1-base's host simulator:
+#   python3 fm1-base/tools/build.py . --host
+#   build/host/fm1-txtr_host tests/fm1/basic.txt build/host
+wait 800
+shot boot.png
+expect playing 0
+tap PLAY
+wait 200
+expect playing 1
+wav play.wav
+wait 6000
+wavstop
+shot playing.png
+# pages: SELECT turns them, ALGORITHM the sub-pages
+turn SELECT 3
+wait 50
+expect page 3
+shot grain.png
+turn K2 5
+wait 50
+turn ALGO 1
+wait 50
+expect sub 1
+# the root from a key (key 5 = A# above F3: pitch class 10)
+key 5 down
+wait 30
+key 5 up
+wait 30
+expect root 10
+# freeze
+tap REC
+wait 100
+expect frozen 1
+shot frozen.png
+tap REC
+wait 100
+expect frozen 0
+# morph from PRESET
+turn PRESET 4
+wait 50
+expect morph 100
+# snapshot B, then back
+tap EDIT
+wait 30
+expect snap 1
+tap EDIT
+wait 30
+expect snap 0
+# save to slot 3 (key 2), change something, load it back
+press SAVE
+key 2 down
+wait 50
+key 2 up
+release SAVE
+wait 50
+expect slot 2
+turn SELECT 3
+wait 30
+expect page 0
+turn K1 4
+wait 50
+expect density 9
+press HOME
+key 2 down
+wait 50
+key 2 up
+release HOME
+wait 100
+expect density 5
+# the slot comes back after a power cycle
+reboot
+wait 800
+expect slot 2
+expect density 5
+shot reboot.png
+# MIDI in plays the FM voice
+midi 90 3C 64
+wait 200
+expect voices 1
+midi 80 3C 00

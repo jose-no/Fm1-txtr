@@ -1,5 +1,4 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-#include <string.h>
 #include "tx_mod.h"
 
 void tx_mod_init(tx_mod *M, uint32_t seed)
@@ -30,7 +29,7 @@ static float lfo_shape(tx_mod *M, int i, int shape, float ph)
     case 4: return ph < 0.5f ? 1.0f : -1.0f;
     case 5: return M->rnd_b[i];
     default: {
-        float t = 0.5f - 0.5f * cosf((float)M_PI * ph);
+        float t = 0.5f - 0.5f * cosf(TX_PI * ph);
         return M->rnd_a[i] + (M->rnd_b[i] - M->rnd_a[i]) * t;
     }
     }

@@ -1,0 +1,12 @@
+# fm1-txtr's words for a screen reader (fm1-reader): the text on the screen <TAB> what to say.
+# url: https://jose-no.github.io/fm1-txtr/words/
+TXTR	texture
+SEQ	sequencer
+NOTES	notes
+SOUND	sound
+GRAIN	grain
+SPACE	space
+MOD	modulation
+EDIT A	editing snapshot A
+EDIT B	editing snapshot B
+FROZEN	frozen

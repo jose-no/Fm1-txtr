@@ -26,8 +26,8 @@ static const char *const l_buf_freeze[] = {"Off", "On"};
 static const char *const l_buf_mode[] = {"Overwrite", "Overdub"};
 static const char *const l_gr_mode[] = {"Granular", "Pitch shift", "Loop delay"};
 static const char *const l_sp_ftype[] = {"LP", "BP", "HP", "Notch"};
-static const float v_dl_time[] = {10.0f, 11.1892f, 12.5197f, 14.0085f, 15.6743f, 17.5382f, 19.6238f, 21.9574f, 24.5684f, 27.49f, 30.759f, 34.4167f, 38.5093f, 43.0887f, 48.2126f, 53.9458f, 60.3608f, 67.5386f, 75.57f, 84.5564f, 94.6114f, 105.8622f, 118.4508f, 132.5364f, 148.297f, 165.9317f, 185.6636f, 207.7418f, 232.4454f, 260.0867f, 291.015f, 325.6211f, 364.3424f, 407.6683f, 456.1462f, 510.389f, 571.082f, 638.9923f, 714.9782f, 800.0f, -0.03125f, -0.0625f, -0.09375f, -0.08333333333333333f, -0.125f, -0.1875f, -0.16666666666666666f, -0.25f, -0.375f, -0.5f};
-static const char *const l_dl_time[] = {"10 ms", "11 ms", "13 ms", "14 ms", "16 ms", "18 ms", "20 ms", "22 ms", "25 ms", "27 ms", "31 ms", "34 ms", "39 ms", "43 ms", "48 ms", "54 ms", "60 ms", "68 ms", "76 ms", "85 ms", "95 ms", "106 ms", "118 ms", "133 ms", "148 ms", "166 ms", "186 ms", "208 ms", "232 ms", "260 ms", "291 ms", "326 ms", "364 ms", "408 ms", "456 ms", "510 ms", "571 ms", "639 ms", "715 ms", "800 ms", "1/32", "1/16", "1/16 d", "1/8 t", "1/8", "1/8 d", "1/4 t", "1/4", "1/4 d", "1/2"};
+static const float v_dl_time[] = {10.0f, 11.0551f, 12.2216f, 13.5111f, 14.9367f, 16.5126f, 18.2549f, 20.181f, 22.3104f, 24.6644f, 27.2667f, 30.1437f, 33.3242f, 36.8403f, 40.7274f, 45.0246f, 49.7752f, 55.0271f, 60.8331f, 67.2517f, 74.3476f, 82.1921f, 90.8643f, 100.4516f, 111.0504f, 122.7675f, 135.7209f, 150.041f, 165.8721f, 183.3735f, 202.7216f, 224.1111f, 247.7574f, 273.8987f, 302.7982f, 334.747f, 370.0667f, 409.1131f, 452.2793f, 500.0f, -0.03125f, -0.0625f, -0.09375f, -0.08333333333333333f, -0.125f, -0.1875f, -0.16666666666666666f, -0.25f, -0.375f, -0.5f};
+static const char *const l_dl_time[] = {"10 ms", "11 ms", "12 ms", "14 ms", "15 ms", "17 ms", "18 ms", "20 ms", "22 ms", "25 ms", "27 ms", "30 ms", "33 ms", "37 ms", "41 ms", "45 ms", "50 ms", "55 ms", "61 ms", "67 ms", "74 ms", "82 ms", "91 ms", "100 ms", "111 ms", "123 ms", "136 ms", "150 ms", "166 ms", "183 ms", "203 ms", "224 ms", "248 ms", "274 ms", "303 ms", "335 ms", "370 ms", "409 ms", "452 ms", "500 ms", "1/32", "1/16", "1/16 d", "1/8 t", "1/8", "1/8 d", "1/4 t", "1/4", "1/4 d", "1/2"};
 static const char *const l_lfo1_shape[] = {"Sine", "Tri", "Saw up", "Saw down", "Square", "S&H", "Smooth"};
 static const float v_lfo1_rate[] = {0.01f, 0.0122f, 0.0148f, 0.0179f, 0.0218f, 0.0265f, 0.0322f, 0.0391f, 0.0475f, 0.0578f, 0.0702f, 0.0853f, 0.1037f, 0.126f, 0.1531f, 0.186f, 0.2261f, 0.2747f, 0.3339f, 0.4057f, 0.493f, 0.5991f, 0.728f, 0.8846f, 1.075f, 1.3063f, 1.5874f, 1.929f, 2.3441f, 2.8485f, 3.4614f, 4.2063f, 5.1114f, 6.2113f, 7.5478f, 9.172f, 11.1456f, 13.544f, 16.4584f, 20.0f, -16.0f, -8.0f, -4.0f, -2.0f, -1.0f, -0.5f, -0.25f, -0.125f, -0.0625f};
 static const char *const l_lfo1_rate[] = {"0.01 Hz", "0.01 Hz", "0.01 Hz", "0.02 Hz", "0.02 Hz", "0.03 Hz", "0.03 Hz", "0.04 Hz", "0.05 Hz", "0.06 Hz", "0.07 Hz", "0.09 Hz", "0.10 Hz", "0.13 Hz", "0.15 Hz", "0.19 Hz", "0.23 Hz", "0.27 Hz", "0.33 Hz", "0.41 Hz", "0.49 Hz", "0.60 Hz", "0.73 Hz", "0.88 Hz", "1.1 Hz", "1.3 Hz", "1.6 Hz", "1.9 Hz", "2.3 Hz", "2.8 Hz", "3.5 Hz", "4.2 Hz", "5.1 Hz", "6.2 Hz", "7.5 Hz", "9.2 Hz", "11 Hz", "14 Hz", "16 Hz", "20 Hz", "16 bars", "8 bars", "4 bars", "2 bars", "1 bar", "1/2", "1/4", "1/8", "1/16"};
@@ -218,11 +218,11 @@ const tx_pdef tx_pdefs[TX_NPARAMS] = {
     {0x5A46, TXC_INT, TXF_MOD | TXF_MORPH, 1, 16, 4, 1.0f, 16.0f, 0, 0, 21, 1, 0},   /* gr_burst */
     {0x0FEE, TXC_EXP, TXF_MOD | TXF_MORPH, 0, 1000, 630, 1.0f, 2000.0f, 0, 0, 21, 2, 0},   /* gr_burstspr */
     {0xB6C5, TXC_LIN, TXF_MOD | TXF_MORPH, 0, 1000, 500, 0.0f, 100.0f, 0, 0, 21, 3, 0},   /* gr_jitter */
-    {0x6220, TXC_EXP, TXF_MOD | TXF_MORPH, 0, 1000, 932, 0.25f, 3.6f, 0, 0, 22, 0, 0},   /* buf_len */
+    {0x6220, TXC_EXP, TXF_MOD | TXF_MORPH, 0, 1000, 969, 0.25f, 3.25f, 0, 0, 22, 0, 0},   /* buf_len */
     {0x5F7A, TXC_ENUM, 0, 0, 1, 0, 0.0f, 0.0f, 0, 2, 22, 1, 0},   /* buf_freeze */
     {0xABC9, TXC_ENUM, TXF_MORPH, 0, 1, 0, 0.0f, 0.0f, 0, 2, 22, 2, 0},   /* buf_mode */
     {0x3DAE, TXC_LIN, TXF_MOD | TXF_MORPH, 0, 1000, 800, 0.0f, 100.0f, 0, 0, 22, 3, 0},   /* buf_in */
-    {0x6CB9, TXC_INT, TXF_MORPH, 4, 48, 24, 4.0f, 48.0f, 0, 0, 23, 0, 0},   /* gr_cap */
+    {0x6CB9, TXC_INT, TXF_MORPH, 4, 48, 16, 4.0f, 48.0f, 0, 0, 23, 0, 0},   /* gr_cap */
     {0xC172, TXC_ENUM, TXF_MORPH, 0, 2, 0, 0.0f, 0.0f, 0, 3, 23, 1, 0},   /* gr_mode */
     {0xBFD9, TXC_LIN, TXF_MOD | TXF_MORPH, 0, 1000, 700, 0.0f, 100.0f, 0, 0, 23, 2, 0},   /* gr_width */
     {0x36E5, TXC_LIN, TXF_MOD | TXF_MORPH, 0, 1000, 800, 0.0f, 100.0f, 0, 0, 23, 3, 0},   /* gr_level */
@@ -234,7 +234,7 @@ const tx_pdef tx_pdefs[TX_NPARAMS] = {
     {0xE53B, TXC_LIN, TXF_MOD | TXF_MORPH, 0, 1000, 0, 0.0f, 100.0f, 0, 0, 25, 1, 0},   /* sp_fold */
     {0x2F7D, TXC_LIN, TXF_MOD | TXF_MORPH, 0, 1000, 0, 0.0f, 100.0f, 0, 0, 25, 2, 0},   /* sp_crush */
     {0xFC9A, TXC_LIN, TXF_MOD | TXF_MORPH, 0, 1000, 0, 0.0f, 100.0f, 0, 0, 25, 3, 0},   /* sp_srr */
-    {0x67EA, TXC_ENUM, TXF_MORPH, 0, 49, 48, 0.0f, 0.0f, v_dl_time, 50, 26, 0, 0},   /* dl_time */
+    {0x67EA, TXC_ENUM, TXF_MORPH, 0, 49, 45, 0.0f, 0.0f, v_dl_time, 50, 26, 0, 0},   /* dl_time */
     {0xCBF3, TXC_LIN, TXF_MOD | TXF_MORPH, 0, 1000, 364, 0.0f, 110.0f, 0, 0, 26, 1, 0},   /* dl_fb */
     {0x489B, TXC_LIN, TXF_MOD | TXF_MORPH, 0, 1000, 550, 0.0f, 100.0f, 0, 0, 26, 2, 0},   /* dl_tone */
     {0x5FA9, TXC_LIN, TXF_MOD | TXF_MORPH, 0, 1000, 700, 0.0f, 100.0f, 0, 0, 26, 3, 0},   /* dl_width */

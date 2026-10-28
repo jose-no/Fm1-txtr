@@ -41,6 +41,8 @@ typedef struct {
     float fs;
     uint16_t scale_mask;        /* from the sequencer, for pitch quantize */
     int nactive;
+    int shed;                   /* grains taken off the cap after an overload, given back slowly */
+    uint32_t shed_age;
 } tx_grains;
 
 void tx_grains_init(tx_grains *G, float fs, uint32_t seed);
@@ -48,6 +50,7 @@ void tx_grains_clear(tx_grains *G);
 /* writes TX_BLOCK mono input samples (unless frozen) and adds the cloud to outL/outR */
 void tx_grains_block(tx_grains *G, const tx_pstate *ps, const float *in, float *outL, float *outR);
 void tx_grains_hit(tx_grains *G, const tx_pstate *ps);         /* a sequencer hit (Trigger = Hits) */
+void tx_grains_overload(tx_grains *G);                          /* the render ran late: fewer grains for a while */
 
 /* For the live view: write head and up to max grains as 0..1 positions in the buffer. */
 float tx_grains_head(const tx_grains *G);
